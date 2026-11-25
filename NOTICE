@@ -1,0 +1,9 @@
+beoview/card/beoview-camera.js and beoview/card/beoview-video-rtc.js are modified copies of
+webrtc-camera.js and video-rtc.js from WebRTC Camera, https://github.com/AlexxIT/WebRTC
+Copyright (c) AlexxIT, MIT License.
+
+beoview/card/digital-ptz.js is from pan-zoom-controller, https://github.com/dbuezas/pan-zoom-controller
+Copyright (c) dbuezas, MIT License.
+
+The add-on decodes QR photos with jsQR, https://github.com/cozmo/jsQR
+Copyright (c) Cosmo Wolfe, Apache License 2.0.

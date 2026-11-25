@@ -1,0 +1,28 @@
+# go2rtc inside the Beoview bridge app. Only the WebRTC media port (8555) is mapped to the LAN;
+# the API (1984, can create exec streams), RTSP (8554), the bridge HTTP (8766) and mic socket (8767)
+# stay on HA's internal network. HA's WebRTC Camera integration talks to http://local-beoview-bridge:1984.
+api:
+  listen: ":1984"
+rtsp:
+  listen: ":8554"
+webrtc:
+  listen: ":8555"
+  filters:
+    networks: [udp4, tcp4]   # IPv4 only: binding the IPv6 link-local address fails inside the app container
+  candidates:
+    - ${HOST_IP}:8555   # the HA host LAN IP, filled in by bridge.ts from the Supervisor; remote (4G) calls go via Nabu Casa TURN
+    - stun:8555
+log:
+  level: info
+  exec: debug   # shows when the backchannel ffmpeg starts/stops (local addresses only, no secrets)
+streams:
+  door:
+    # door → viewer: bridge MJPEG (10 fps) + door PCM (16 kHz) → H.264 + Opus. Both inputs are fixed-rate clocks, so
+    # timestamps come from -r 10 and the sample count. Never -use_wallclock_as_timestamps on the raw PCM: it drops every audio packet.
+    - "exec:ffmpeg -hide_banner -loglevel error -r 10 -f mpjpeg -i http://127.0.0.1:8766/mjpeg -f s16le -ar 16000 -ac 1 -i http://127.0.0.1:8766/audio.pcm -map 0:v -map 1:a -c:v libx264 -preset ultrafast -tune zerolatency -g 20 -pix_fmt yuv420p -c:a libopus -b:a 32k -rtsp_transport tcp -f rtsp {output}"
+    # viewer mic → door: go2rtc pipes the browser's PCMA audio to stdin; we hand the bridge s16le 16 kHz.
+    # #audio=pcma/8000 is required: go2rtc 1.9.10 defaults the exec backchannel to PCML/16000, which no browser sends.
+    - "exec:ffmpeg -hide_banner -loglevel error -f alaw -ar 8000 -ac 1 -i - -f s16le -ar 16000 -ac 1 tcp://127.0.0.1:8767#backchannel=1#audio=pcma/8000"
+  # Diagnostics. POST /api/streams?dst=door&src=tone_out plays a 4 s tone into the backchannel (tests go2rtc → bridge mic socket without a browser).
+  tone_out:
+    - "exec:ffmpeg -hide_banner -loglevel error -re -f lavfi -i sine=frequency=800:duration=4 -c:a pcm_alaw -ar 8000 -ac 1 -rtsp_transport tcp -f rtsp {output}"

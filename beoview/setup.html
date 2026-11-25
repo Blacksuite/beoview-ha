@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beoview setup</title>
+<style>
+  :root { --bg: #f5f5f7; --card: #fff; --fg: #1c1c1e; --muted: #6e6e73; --accent: #03a9f4; --ok: #2e7d32; --err: #c62828; --line: #e5e5ea; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #111113; --card: #1c1c1e; --fg: #f2f2f7; --muted: #a1a1a6; --line: #2c2c2e; --ok: #66bb6a; --err: #ef5350; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 440px; margin: 0 auto; padding: 24px 16px 48px; }
+  .card { background: var(--card); border-radius: 20px; padding: 24px 20px; border: 1px solid var(--line); }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p { margin: 0 0 16px; color: var(--muted); }
+  ol { margin: 0 0 20px; padding-left: 20px; } li { margin-bottom: 6px; }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 56px; border: 0; border-radius: 14px;
+         background: var(--accent); color: #fff; font: 600 17px/1 inherit; cursor: pointer; }
+  .btn[disabled] { opacity: .5; }
+  .alt { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .alt summary { color: var(--muted); cursor: pointer; }
+  .row { display: flex; gap: 8px; margin-top: 12px; }
+  input[type=text] { flex: 1; min-width: 0; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: 15px ui-monospace, monospace; }
+  .small { width: auto; padding: 0 18px; min-height: 48px; }
+  #msg { margin-top: 16px; min-height: 24px; font-weight: 600; }
+  .ok { color: var(--ok); } .err { color: var(--err); }
+  img#prev { display: none; width: 100%; border-radius: 12px; margin-top: 16px; }
+  .card + .card { margin-top: 16px; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  ul.rl { list-style: none; margin: 0 0 16px; padding: 0; }
+  ul.rl li { display: flex; align-items: center; gap: 8px; min-height: 48px; border-bottom: 1px solid var(--line); }
+  ul.rl li span { flex: 1; } ul.rl li small { color: var(--muted); }
+  .x { border: 0; background: none; color: var(--err); font-size: 15px; min-width: 44px; min-height: 44px; cursor: pointer; }
+  .btn.ghost { background: var(--bg); color: var(--fg); border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<main><div class="card" id="app"></div><div class="card" id="replies"></div></main>
+<script>
+const S = __STATE__;
+const nl = (navigator.language || '').toLowerCase().startsWith('nl');
+const t = nl ? {
+  title: 'Beoview koppelen', intro: 'Koppel je intercom in één stap.',
+  steps: ['Open op het scherm van de BWCM.01 het menu en voeg een nieuw apparaat toe.', 'Er verschijnt een QR-code.', 'Tik hieronder en maak een foto van die QR-code.'],
+  scan: 'Foto van de QR-code maken', paste: 'Of plak de code', go: 'Koppelen',
+  busy: 'Bezig met koppelen…', ok: 'Gekoppeld! De intercom verschijnt nu in Home Assistant.', no_code: 'Geen QR-code gevonden. Probeer een scherpere foto, recht van voren.',
+  refused: 'Beoview weigerde de code. Hij is al gebruikt of verlopen: maak een nieuwe QR-code en probeer opnieuw.', fail: 'Er ging iets mis. Probeer het opnieuw.',
+  done: 'Gekoppeld', doneText: 'Je intercom is gekoppeld.', cloudOn: 'Verbonden met de Beoview-cloud.', cloudOff: 'Nog niet verbonden met de Beoview-cloud; dat kan een minuut duren.',
+  next: 'Voeg nu op een dashboard een kaart toe met:',
+  rTitle: 'Snelle antwoorden', rIntro: 'Knoppen in de kaart die een opgenomen bericht bij de deur afspelen. Upload een audiobestand (mp3, wav, m4a...): de bestandsnaam wordt de knop, dus noem het bijvoorbeeld "Ik kom eraan.mp3".',
+  rUpload: 'Audiobestand toevoegen', rBuiltin: 'ingebouwd', rSwitch: 'Ingebouwde Nederlandse antwoorden tonen', rRemove: 'Verwijder', rNone: 'Nog geen eigen antwoorden.', rBusy: 'Bezig met omzetten…',
+  rAdded: n => `"${n}" toegevoegd. Hij staat nu in de kaart.`, rBad: 'Dat bestand kon niet worden omgezet. Probeer een mp3 of wav.', rBig: 'Bestand is te groot (max 15 MB).'
+} : {
+  title: 'Connect Beoview', intro: 'Connect your intercom in one step.',
+  steps: ['On the BWCM.01 screen, open the menu and add a new device.', 'A QR code appears.', 'Tap below and take a photo of that QR code.'],
+  scan: 'Take a photo of the QR code', paste: 'Or paste the code', go: 'Connect',
+  busy: 'Connecting…', ok: 'Connected! The intercom now shows up in Home Assistant.', no_code: 'No QR code found. Try a sharper photo, straight on.',
+  refused: 'Beoview refused the code. It was already used or has expired: make a new QR code and try again.', fail: 'Something went wrong. Please try again.',
+  done: 'Connected', doneText: 'Your intercom is connected.', cloudOn: 'Connected to the Beoview cloud.', cloudOff: 'Not connected to the Beoview cloud yet; this can take a minute.',
+  next: 'Now add a card to a dashboard with:',
+  rTitle: 'Quick replies', rIntro: 'Buttons in the card that play a recorded message at the door. Upload an audio file (mp3, wav, m4a...): the file name becomes the button, so call it e.g. "I\'m coming.mp3".',
+  rUpload: 'Add an audio file', rBuiltin: 'built-in, Dutch', rSwitch: 'Show the built-in Dutch replies', rRemove: 'Remove', rNone: 'No replies of your own yet.', rBusy: 'Converting…',
+  rAdded: n => `Added "${n}". It's in the card now.`, rBad: 'That file could not be converted. Try an mp3 or wav.', rBig: 'File is too big (15 MB max).'
+};
+const app = document.getElementById('app');
+const doneView = (fresh) => {
+  app.innerHTML = `<h1>✓ ${t.done}</h1><p>${fresh ? t.ok : t.doneText + ' ' + (S.cloud ? t.cloudOn : t.cloudOff)}</p>
+    <p>${t.next}</p><pre style="background:var(--bg);padding:12px;border-radius:12px;margin:0">type: custom:beoview-camera</pre>`;
+};
+if (S.setUp) doneView(false); else {
+  app.innerHTML = `<h1>${t.title}</h1><p>${t.intro}</p><ol>${t.steps.map(s => `<li>${s}</li>`).join('')}</ol>
+    <label class="btn" id="scan"><input type="file" accept="image/*" capture="environment" hidden id="file">📷 ${t.scan}</label>
+    <img id="prev" alt="">
+    <div id="msg" role="status" aria-live="polite"></div>
+    <details class="alt"><summary>${t.paste}</summary>
+      <div class="row"><input type="text" id="code" placeholder="1234abcd-12ab-…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="btn small" id="go">${t.go}</button></div></details>`;
+  const msg = document.getElementById('msg');
+  const send = async (path, body) => {
+    msg.className = ''; msg.textContent = t.busy;
+    try {
+      const r = await fetch(path, {method: 'POST', body}); // relative: works behind HA's ingress path
+      const j = await r.json();
+      if (j.ok) { doneView(true); return; }
+      msg.className = 'err'; msg.textContent = t[j.error] || t.fail;
+    } catch { msg.className = 'err'; msg.textContent = t.fail; }
+  };
+  document.getElementById('file').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const prev = document.getElementById('prev'); prev.src = URL.createObjectURL(f); prev.style.display = 'block';
+    await send('setup/photo', f);
+    e.target.value = '';
+  });
+  document.getElementById('go').addEventListener('click', () => send('setup/code', document.getElementById('code').value));
+}
+
+// Quick replies: upload an audio file; the add-on converts it, names it after the file, and the card shows it.
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const rbox = document.getElementById('replies');
+const post = (path, body) => fetch(path, {method: 'POST', body}).then(r => r.json());
+async function showReplies(note, cls) {
+  const {replies, builtin: on} = await post('setup/replies/list', '').catch(() => ({replies: [], builtin: false}));
+  const mine = replies.filter(r => !r.builtin), builtin = replies.filter(r => r.builtin);
+  rbox.innerHTML = `<h2>${t.rTitle}</h2><p>${t.rIntro}</p>
+    <ul class="rl">${mine.map(r => `<li><span>${esc(r.label)}</span><button class="x" data-n="${esc(r.name)}">${t.rRemove}</button></li>`).join('') || `<li><small>${t.rNone}</small></li>`}</ul>
+    <label class="row" style="align-items:center;margin:0 0 8px"><input type="checkbox" id="bi" ${on ? 'checked' : ''} style="width:22px;height:22px"> <b>${t.rSwitch}</b></label>
+    <ul class="rl" style="${on ? '' : 'opacity:.45'}">${builtin.map(r => `<li><span>${esc(r.label)}</span><small>${t.rBuiltin}</small></li>`).join('')}</ul>
+    <label class="btn ghost"><input type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.aac" multiple hidden id="audio">＋ ${t.rUpload}</label>
+    <div id="rmsg" role="status" aria-live="polite" class="${cls || ''}" style="margin-top:12px;min-height:24px;font-weight:600">${note || ''}</div>`;
+  rbox.querySelectorAll('.x').forEach(b => b.addEventListener('click', async () => { await post('setup/replies/remove', b.dataset.n); showReplies(); }));
+  document.getElementById('bi').addEventListener('change', async (e) => { await post('setup/replies/builtin', e.target.checked ? 'on' : 'off'); showReplies(); });
+  document.getElementById('audio').addEventListener('change', async (e) => {
+    const files = [...e.target.files]; let last = '', cls = 'ok';
+    document.getElementById('rmsg').textContent = t.rBusy;
+    for (const f of files) {
+      if (f.size > 15e6) { last = t.rBig; cls = 'err'; continue; }
+      const r = await fetch('setup/replies/add?file=' + encodeURIComponent(f.name), {method: 'POST', body: f}).then(x => x.json()).catch(() => ({ok: false}));
+      if (r.ok) last = t.rAdded(f.name.replace(/\.[^.]+$/, '')); else { last = t.rBad; cls = 'err'; }
+    }
+    showReplies(last, cls);
+  });
+}
+showReplies();
+</script>
+</body>
+</html>

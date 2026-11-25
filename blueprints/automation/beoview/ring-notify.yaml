@@ -1,0 +1,126 @@
+blueprint:
+  name: Beoview ring → push to your phones (answer, decline, open door)
+  description: >-
+    When someone rings, every phone you pick gets a push with the door snapshot and three buttons:
+    Answer (opens your door dashboard and picks up), Decline, and Open door (asks for Face ID / your lock
+    screen first on iPhone). The push disappears from all phones when the ring ends.
+    Pick one phone or several; each needs the Home Assistant app.
+  domain: automation
+  source_url: https://github.com/Blacksuite/beoview-ha/blob/main/blueprints/automation/beoview/ring-notify.yaml
+  input:
+    phones:
+      name: Phones
+      description: One or more phones with the Home Assistant app.
+      selector:
+        device:
+          multiple: true
+          filter:
+            - integration: mobile_app
+    dashboard:
+      name: Door dashboard
+      description: Opened when you tap the push or Answer, e.g. /lovelace/door
+      default: /lovelace/0
+    title:
+      name: Title
+      default: Doorbell
+    message:
+      name: Message
+      default: Someone is at the door.
+    critical:
+      name: Ring through silent mode (iPhone critical alert)
+      description: iOS asks once to allow critical alerts for Home Assistant.
+      default: true
+      selector: { boolean: {} }
+    volume:
+      name: Critical alert volume
+      default: 0.6
+      selector: { number: { min: 0, max: 1, step: 0.1 } }
+    unlock_button:
+      name: Show the Open door button
+      default: true
+      selector: { boolean: {} }
+mode: parallel
+triggers:
+  - trigger: state
+    entity_id: event.beoview_intercom_doorbell
+    not_from: [unavailable, unknown]
+    id: ring
+  - trigger: state
+    entity_id: binary_sensor.beoview_intercom_ringing
+    from: "on"
+    to: "off"
+    id: ring_end
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data: { action: BEOVIEW_ANSWER }
+    id: answer
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data: { action: BEOVIEW_DECLINE }
+    id: decline
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data: { action: BEOVIEW_UNLOCK }
+    id: unlock
+variables:
+  phones: !input phones
+  dashboard: !input dashboard
+  critical: !input critical
+  volume: !input volume
+  unlock_button: !input unlock_button
+  # notify.mobile_app_<device name>: the notify action the Home Assistant app registers for each phone
+  services: >-
+    {{ (phones if phones is list else [phones]) | map('device_attr', 'name') | map('slugify')
+       | map('regex_replace', '^', 'notify.mobile_app_') | list }}
+  buttons: >-
+    {% set b = [
+      {'action': 'BEOVIEW_ANSWER', 'title': 'Answer', 'uri': dashboard, 'activationMode': 'foreground'},
+      {'action': 'BEOVIEW_DECLINE', 'title': 'Decline', 'destructive': true}] %}
+    {{ b + ([{'action': 'BEOVIEW_UNLOCK', 'title': 'Open door', 'authenticationRequired': true}] if unlock_button else []) }}
+actions:
+  - choose:
+      - conditions: [{ condition: trigger, id: ring }]
+        sequence:
+          - delay: { seconds: 2 }   # the add-on starts video on a ring; wait for a first frame for the snapshot
+          - repeat:
+              for_each: "{{ services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  continue_on_error: true   # one unreachable phone must not stop the others
+                  data:
+                    title: !input title
+                    message: !input message
+                    data:
+                      tag: beoview_ring
+                      url: "{{ dashboard }}"
+                      clickAction: "{{ dashboard }}"
+                      image: /api/camera_proxy/camera.beoview_intercom_door_snapshot
+                      actions: "{{ buttons }}"
+                      ttl: 0
+                      priority: high
+                      push: >-
+                        {{ {'interruption-level': 'critical', 'sound': {'name': 'default', 'critical': 1, 'volume': volume}}
+                           if critical else {'interruption-level': 'time-sensitive'} }}
+      - conditions: [{ condition: trigger, id: ring_end }]
+        sequence:
+          - repeat:
+              for_each: "{{ services }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  continue_on_error: true
+                  data: { message: clear_notification, data: { tag: beoview_ring } }
+      - conditions: [{ condition: trigger, id: answer }]
+        sequence:
+          - action: button.press
+            target: { entity_id: button.beoview_intercom_answer }
+      - conditions: [{ condition: trigger, id: decline }]
+        sequence:
+          - action: button.press
+            target: { entity_id: button.beoview_intercom_hang_up }
+      - conditions:
+          - condition: trigger
+            id: unlock
+          - "{{ unlock_button }}"
+        sequence:
+          - action: button.press
+            target: { entity_id: button.beoview_intercom_unlock_door }

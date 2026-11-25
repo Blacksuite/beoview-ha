@@ -1,0 +1,4 @@
+configuration:
+  registration_token:
+    name: Registratiecode
+    description: Optioneel. Makkelijker is het Beoview-paneel in de zijbalk, dat een foto van de QR-code maakt. Of plak hier de code uit de QR-code (een UUID zoals 1234abcd-...) en herstart. Wordt één keer gebruikt.

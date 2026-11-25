@@ -1,0 +1,66 @@
+blueprint:
+  name: Beoview ring → cast the door card to a Google display
+  description: >-
+    When someone rings, cast a dashboard view with the Beoview card (live video, chime, quick replies,
+    unlock) to a Nest Hub or other Google Cast display, at ring volume. When the call has been over for a
+    while, the old volume is put back and the display is turned off.
+    Google displays have no usable microphone for web pages, so use the quick-reply buttons to talk.
+  domain: automation
+  source_url: https://github.com/Blacksuite/beoview-ha/blob/main/blueprints/automation/beoview/ring-cast.yaml
+  input:
+    display:
+      name: Display
+      selector: { entity: { filter: { integration: cast, domain: media_player } } }
+    dashboard_path:
+      name: Dashboard path
+      description: The part of the dashboard URL after the first slash, e.g. "dashboard-door" for /dashboard-door/hub.
+    view_path:
+      name: View path
+      description: A view with only the Beoview card in it (panel view, `ring_sound: true`), e.g. "hub".
+    ring_volume:
+      name: Ring volume
+      default: 0.8
+      selector: { number: { min: 0, max: 1, step: 0.05 } }
+    off_after:
+      name: Turn off after the call (seconds)
+      default: 30
+      selector: { number: { min: 5, max: 600, unit_of_measurement: s } }
+mode: single
+max_exceeded: silent   # a second ring while the card is up is already on screen
+triggers:
+  - trigger: state
+    entity_id: event.beoview_intercom_doorbell
+    not_from: [unavailable, unknown]
+variables:
+  display: !input display
+  ring_volume: !input ring_volume
+  old_volume: "{{ state_attr(display, 'volume_level') }}"
+actions:
+  - action: cast.show_lovelace_view
+    data:
+      entity_id: !input display
+      dashboard_path: !input dashboard_path
+      view_path: !input view_path
+  - wait_template: "{{ state_attr(display, 'volume_level') is number }}"
+    timeout: { seconds: 5 }
+    continue_on_timeout: true
+  - variables:
+      old_volume: "{{ old_volume if old_volume is number else state_attr(display, 'volume_level') }}"
+  - action: media_player.volume_set
+    target: { entity_id: !input display }
+    data: { volume_level: "{{ ring_volume }}" }
+  - delay: { seconds: 5 }
+  - wait_template: "{{ is_state('sensor.beoview_intercom_call_state', 'idle') }}"
+    timeout: { minutes: 10 }
+    continue_on_timeout: true
+  - delay: { seconds: !input off_after }
+  - condition: state
+    entity_id: sensor.beoview_intercom_call_state
+    state: idle
+  - if: "{{ old_volume is number }}"
+    then:
+      - action: media_player.volume_set
+        target: { entity_id: !input display }
+        data: { volume_level: "{{ old_volume }}" }
+  - action: media_player.turn_off
+    target: { entity_id: !input display }

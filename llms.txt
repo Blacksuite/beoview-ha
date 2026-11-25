@@ -1,0 +1,19 @@
+# Beoview Intercom for Home Assistant
+
+> Unofficial Home Assistant add-on for Beoview / Golmar video intercoms with the BWCM.01 Wi-Fi module: doorbell
+> entities, live video and two-way talk in a dashboard card, door unlock, quick replies, and blueprints to cast to
+> a Google display or push to a phone. Setup is a photo of the module's QR code.
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/Blacksuite/beoview-ha/main/README.md): overview, quick start, limits
+- [Installation](https://raw.githubusercontent.com/Blacksuite/beoview-ha/main/docs/installation.md): step by step
+- [Set up with an AI assistant](https://raw.githubusercontent.com/Blacksuite/beoview-ha/main/docs/ai-setup.md): prompt and verified checklist
+- [The card](https://raw.githubusercontent.com/Blacksuite/beoview-ha/main/docs/card.md): options, quick replies, remote access
+- [Automations](https://raw.githubusercontent.com/Blacksuite/beoview-ha/main/docs/automations.md): entities, blueprints, MQTT commands
+- [Troubleshooting](https://raw.githubusercontent.com/Blacksuite/beoview-ha/main/docs/troubleshooting.md): log messages and fixes
+
+## Development
+
+- [AGENTS.md](https://raw.githubusercontent.com/Blacksuite/beoview-ha/main/AGENTS.md): rules and commands for coding agents
+- [Contributing](https://raw.githubusercontent.com/Blacksuite/beoview-ha/main/CONTRIBUTING.md)

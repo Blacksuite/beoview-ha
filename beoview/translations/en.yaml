@@ -1,0 +1,4 @@
+configuration:
+  registration_token:
+    name: Registration code
+    description: Optional. Easier is the Beoview panel in the sidebar, which takes a photo of the QR code. Or paste the code from the QR code here (a UUID like 1234abcd-...) and restart. Used once.
