@@ -97,6 +97,10 @@ On a VPN the card works as if you were home.
 
 ## A display that shows the door when it rings
 
-Make a dashboard view with only the card, as a **panel** view (full screen), with `ring_sound: true`, and cast it
-on a ring with the [cast blueprint](automations.md#cast-to-a-google-display-when-someone-rings). On a 1024×600
-display such as the Nest Hub the card switches to a landscape layout with large buttons.
+Step-by-step with copy-paste config: [README → Nest Hub](../README.md#-nest-hub-show-the-door-when-it-rings).
+
+In short: a **panel** view (full screen) with only the card and `ring_sound: true`, opened on a ring by the
+[cast blueprint](automations.md#cast-to-a-google-display-when-someone-rings). There's no separate "Hub card":
+on any wide, short screen (like the Nest Hub's 1024×600) the same card puts the video on the left and large
+buttons and quick replies on the right. `ring_sound` plays a two-tone chime when the view opens and on every new
+ring while it's open.

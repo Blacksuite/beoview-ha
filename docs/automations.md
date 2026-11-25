@@ -45,8 +45,21 @@ pushes stop, check that the phone's device name and its `notify.mobile_app_…` 
 
 Casts a dashboard view with the card to a Nest Hub (or any Google Cast display) at ring volume. When the call
 has been over for a while (30 seconds by default), it puts the old volume back and turns the display off.
-Set up the view first, see [The card](card.md#a-display-that-shows-the-door-when-it-rings).
-Google displays can't use a microphone, so answer with quick replies there.
+
+The blueprint doesn't create the view; it opens the one you name. **Make the view first**
+([copy-paste config in the README](../README.md#-nest-hub-show-the-door-when-it-rings)), then fill in:
+
+| Field | Meaning |
+|---|---|
+| Display | The Google Cast device to show it on |
+| Dashboard path | The part of the view's address after the host: `lovelace` for the default dashboard, or e.g. `dashboard-home` |
+| View path | The view's `path`, e.g. `door-hub` |
+| Ring volume | Volume while the view is up; the old volume is put back afterwards |
+| Turn off after the call | Seconds after the call ends before the display is switched off |
+
+Needs Home Assistant reachable over HTTPS (Home Assistant Cloud or your own certificate): Google displays only
+load HTTPS pages. Google displays can't use a microphone, so answer with quick replies there.
+Test without ringing: the automation → ⋮ → **Run actions**.
 
 ## Examples
 

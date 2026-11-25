@@ -93,8 +93,54 @@ Now ring your own doorbell. The card should show **Live view** within a second o
 ### 7. Optional extras
 
 - **Phone push**: import the [push blueprint](docs/automations.md#push-to-your-phones-answer-decline-open-door) and pick your phones.
-- **Nest Hub**: import the [cast blueprint](docs/automations.md#cast-to-a-google-display-when-someone-rings).
+- **Nest Hub**: show the door on your Nest Hub when it rings, see [Nest Hub](#-nest-hub-show-the-door-when-it-rings) below.
 - **Quick replies**: see below.
+
+## 📺 Nest Hub: show the door when it rings
+
+When someone rings, your Nest Hub (or any Google display) switches to the door camera with a chime, big buttons
+to open the door, and your quick replies. Shortly after the call it turns itself off again.
+
+You need: the Nest Hub in Home Assistant (it shows up by itself as a **Google Cast** device), and Home Assistant
+reachable over **HTTPS** (Home Assistant Cloud or your own certificate). Google displays only load HTTPS pages.
+
+**1. Make the screen it shows.** Pick a dashboard (any one), click ✏️ Edit → ⋮ → **Raw configuration editor**,
+and add this view at the end of the `views:` list:
+
+```yaml
+  - title: Door Hub
+    path: door-hub
+    type: panel
+    subview: true          # hidden from the tab bar; only the blueprint opens it
+    cards:
+      - type: custom:beoview-camera
+        ring_sound: true   # chime when it opens
+```
+
+The card switches to a layout made for the Hub's screen (video left, big buttons right) by itself.
+
+**2. Note the two paths.** Open the view once in your browser. The address ends in
+`/<dashboard path>/door-hub`, for example `…/lovelace/door-hub` (dashboard path `lovelace`) or
+`…/dashboard-home/door-hub` (dashboard path `dashboard-home`).
+
+**3. Add the blueprint.**
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FBlacksuite%2Fbeoview-ha%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fbeoview%2Fring-cast.yaml)
+
+Then create an automation from it and fill in:
+
+| Field | What to enter |
+|---|---|
+| Display | Your Nest Hub |
+| Dashboard path | The dashboard path from step 2, e.g. `lovelace` |
+| View path | `door-hub` |
+| Ring volume | How loud the chime plays (0.8 is a good start) |
+| Turn off after the call | Seconds after the call ends before the Hub goes dark (30 is default) |
+
+Test it without going outside: open the automation → ⋮ → **Run actions**. The Hub shows the door card and chimes.
+
+On the Hub you can see and hear the visitor, open the door and tap quick replies. Talking isn't possible there:
+Google doesn't let web pages use the Hub's microphone. Use the phone push or your phone for that.
 
 ## Quick replies
 
